@@ -1,4 +1,4 @@
-import copy,json,os,tempfile,threading,unittest
+import copy,json,os,tempfile,threading,unittest,io
 from pathlib import Path
 from unittest.mock import patch
 from urllib import request,error
@@ -54,6 +54,12 @@ class Tests(unittest.TestCase):
  def test_stale_index_falls_back(self):
   (self.folder/'embeddings.json').write_text(json.dumps({'model':EMBED_MODEL,'fingerprint':'old','vectors':{}}))
   self.assertIsNone(EvaluationService(self.folder).index)
+ def test_quota_and_rate_limit_distinguished(self):
+  for provider_code,expected in [('insufficient_quota','insufficient_quota'),('rate_limit_exceeded','rate_limit')]:
+   body=io.BytesIO(json.dumps({'error':{'code':provider_code,'message':'private-upstream-detail'}}).encode())
+   with patch.dict(os.environ,{'LLM_API_KEY':'fake-secret'}),patch('backend.service.request.urlopen',side_effect=error.HTTPError('https://api.openai.com',429,'private',{},body)):
+    with self.assertRaises(ServiceError) as e:OpenAI().call('responses',{})
+    self.assertEqual(e.exception.code,expected);self.assertNotIn('private-upstream-detail',str(e.exception))
  def test_key_never_returned_in_upstream_error(self):
   with patch.dict(os.environ,{'LLM_API_KEY':'fake-secret'}),patch('backend.service.request.urlopen',side_effect=error.HTTPError('https://api.openai.com',401,'fake-secret',{},None)):
    with self.assertRaises(ServiceError) as e:OpenAI().call('responses',{})

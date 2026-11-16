@@ -9,7 +9,7 @@ MODEL=os.environ.get('EVAL_MODEL','gpt-4.1-mini')
 EMBED_MODEL=os.environ.get('EMBED_MODEL','text-embedding-3-small')
 AXES=('originality','award_fit','feasibility','interest')
 class ServiceError(Exception):
- def __init__(self,message,status=502):super().__init__(message);self.status=status
+ def __init__(self,message,status=502,code=None):super().__init__(message);self.status=status;self.code=code
 
 def key():return os.environ.get('LLM_API_KEY') or os.environ.get('OPENAI_API_KEY')
 def digest(value):return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
@@ -41,7 +41,14 @@ class OpenAI:
    with request.urlopen(req,timeout=90) as response:return json.load(response)
   except error.HTTPError as e:
    if e.code in (401,403):raise ServiceError('AI 연결 권한을 확인해야 합니다. 운영자에게 알려주세요.',503) from None
-   if e.code==429:raise ServiceError('AI 사용 한도 또는 요청 제한에 도달했습니다. 잠시 후 다시 시도해주세요.',429) from None
+   if e.code==429:
+    try:
+     details=json.loads(e.read(65536)).get('error',{})
+     quota=details.get('code') in ('insufficient_quota','billing_hard_limit_reached') or details.get('type')=='insufficient_quota'
+    except (ValueError,AttributeError,OSError,TypeError):quota=False
+    finally:e.close()
+    if quota:raise ServiceError('OpenAI API 사용 잔액 또는 결제 한도가 부족합니다. 운영자가 API 결제·크레딧 설정을 확인해야 합니다.',429,'insufficient_quota') from None
+    raise ServiceError('AI 요청 제한에 도달했습니다. 잠시 후 다시 시도해주세요.',429,'rate_limit') from None
    raise ServiceError('AI 서비스가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.') from None
   except (OSError,ValueError):raise ServiceError('AI 서비스 연결이 지연되거나 응답을 읽지 못했습니다.') from None
  def embed(self,texts):
