@@ -107,7 +107,7 @@ def build_index(client,folder):
 
 class EvaluationService:
  def __init__(self,folder=None,client_factory=OpenAI):
-  self.folder=folder or ROOT/'.local';self.folder.mkdir(parents=True,exist_ok=True)
+  self.folder=folder or Path(os.environ.get('DATA_DIR',str(ROOT/'.local')));self.folder.mkdir(parents=True,exist_ok=True)
   self.rows=read_data();self.data_hash=digest([(r['uid'],r['title']) for r in self.rows]);self.factory=client_factory
   self.index=None;path=self.folder/'embeddings.json'
   if path.exists():

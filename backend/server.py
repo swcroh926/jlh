@@ -1,5 +1,6 @@
 """Loopback-only development server; public deployment needs authentication first."""
-import argparse,json,mimetypes,threading,time
+import argparse,json,mimetypes,threading,time,os
+from pathlib import Path
 from collections import deque
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse
@@ -48,7 +49,7 @@ def handler(service):
 def main():
  p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8000);p.add_argument('--build-index',action='store_true');args=p.parse_args()
  if args.build_index:
-  build_index(OpenAI(),ROOT/'.local');return
+  build_index(OpenAI(),Path(os.environ.get('DATA_DIR',str(ROOT/'.local'))));return
  server=ThreadingHTTPServer(('127.0.0.1',args.port),handler(EvaluationService()))
  print(f'Development server: port {args.port}; API configured: {bool(key())}',flush=True)
  try:server.serve_forever()

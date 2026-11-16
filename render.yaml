@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: jlh-science-lab
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn 'backend.public_app:create_app()' --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 180 --error-logfile -
+    healthCheckPath: /api/health
+    disk:
+      name: jlh-data
+      mountPath: /var/data/jlh
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: DATA_DIR
+        value: /var/data/jlh
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: LLM_API_KEY
+        sync: false
+      - key: BETA_ACCESS_CODES
+        sync: false
