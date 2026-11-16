@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {buildIndex,searchAwards} from '../search.mjs';
+const records=[{id:'1',title:'빛의 색에 따른 식물 성장',record_type:'학생',source:'서울',year:'2025'}, {id:'2',title:'(지도논문) 빛의 색에 따른 식물 성장',record_type:'지도논문',source:'전국',year:'2026'}, {id:'3',title:'식물 성장과 온도',record_type:'학생',source:'전국',year:'2026'}];
+test('exact title matches despite whitespace; guidance excluded by default',()=>{const r=searchAwards(buildIndex(records),'빛의색에따른식물성장');assert.equal(r[0].record.id,'1');assert.ok(r.every(x=>x.record.record_type!=='지도논문'))});
+test('source and guidance filters',()=>{const r=searchAwards(buildIndex(records),'빛의 색',{includeGuidance:true,source:'전국'});assert.equal(r[0].record.id,'2')});
+test('no invented matches for empty or unrelated input',()=>{for(const q of ['','a','zzzzzzzz'])assert.deepEqual(searchAwards(buildIndex(records),q),[])});
+test('uploaded data maintains identities and provenance',()=>{const d=JSON.parse(readFileSync(new URL('../data/awards.json',import.meta.url)));assert.equal(d.records.length,3053);assert.equal(new Set(d.records.map(r=>r.source+':'+r.id)).size,3053);assert.equal(d.records.filter(r=>r.source==='전국'&&r.record_type==='학생').length,1457);assert.equal(d.records.filter(r=>r.source==='전국'&&r.record_type==='지도논문').length,863);assert.equal(d.records.filter(r=>r.record_type==='확인 필요').length,4)});
