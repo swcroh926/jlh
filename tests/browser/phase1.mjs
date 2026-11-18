@@ -33,7 +33,7 @@ try{
  await page.getByRole('heading',{name:'비슷한 작품 찾아보기',exact:true}).waitFor();
  assert.equal(await openSearch.getAttribute('aria-current'),'page');
  assert.equal(await page.locator('#ideas-form').isVisible(),false);
- await page.locator('.coverage').filter({hasText:'3,053'}).waitFor();
+ await page.locator('.coverage').filter({hasText:'3,812'}).waitFor();
  assert.equal(awardLoads,1);
  await page.locator('.award-query').fill('식물');
  await page.getByRole('button',{name:'유사 제목 검색'}).click();

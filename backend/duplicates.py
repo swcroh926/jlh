@@ -49,7 +49,7 @@ class DuplicateService:
             if row.get('record_type')=='지도논문':continue
             if not all(isinstance(row.get(k),str) and row[k] for k in ('source','id','title','year','url')):raise ServiceError('자료에 제목·출처 정보가 누락돼 검사를 완료할 수 없습니다.',503)
             link=urlparse(row['url'])
-            if link.scheme!='https' or link.hostname not in ('www.science.go.kr','ssei.sen.go.kr'):raise ServiceError('출처 주소를 검증하지 못했습니다.',503)
+            if link.scheme!='https' or link.hostname not in ('www.science.go.kr','ssei.sen.go.kr','www.gise.kr','gice.gen.go.kr','aicei.ice.go.kr','gnse.gne.go.kr','www.gbe.kr','org.jje.go.kr'):raise ServiceError('출처 주소를 검증하지 못했습니다.',503)
             record={k:row.get(k,'') for k in ('source','id','title','year','field','award','record_type','url')};record['uid']=row['source']+':'+row['id']
             if record['uid'] in known:raise ServiceError('검색 자료의 고유 ID가 중복됐습니다.',503)
             known[record['uid']]=record

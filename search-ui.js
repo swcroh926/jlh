@@ -2,11 +2,11 @@ import {buildIndex,searchAwards} from './search.mjs';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let promise;
 function data(){return promise??=fetch(new URL('./data/awards.json',import.meta.url)).then(r=>{if(!r.ok)throw Error('load');return r.json()}).then(d=>({...d,index:buildIndex(d.records)})).catch(e=>{promise=null;throw e})}
-function safeLink(url){try{const u=new URL(url);return u.protocol==='https:'&&['www.science.go.kr','ssei.sen.go.kr'].includes(u.hostname)?u.href:null}catch{return null}}
+function safeLink(url){try{const u=new URL(url);return u.protocol==='https:'&&['www.science.go.kr','ssei.sen.go.kr','www.gise.kr','gice.gen.go.kr','aicei.ice.go.kr','gnse.gne.go.kr','www.gbe.kr','org.jje.go.kr'].includes(u.hostname)?u.href:null}catch{return null}}
 export function mountSearch(root,queries=[]){
  if(!root)return;
  root.innerHTML=`<div class="page-heading"><h1 tabindex="-1">비슷한 작품 찾아보기</h1></div>
- <article class="award-search"><p>수집한 수상작의 제목을 단어와 연속 글자로 비교합니다.</p><p class="coverage" role="status">자료를 불러오는 중입니다…</p><label>검색할 아이디어<input class="award-query" maxlength="1000" placeholder="예: 식물 성장, 미세플라스틱"></label>${queries.length?`<div class="query-options">${queries.map((q,i)=>`<button type="button" data-query="${i}">${esc(q)}</button>`).join('')}</div>`:''}<div class="search-options"><label>출처<select class="award-source"><option value="">전국 + 서울</option><option>전국</option><option>서울</option></select></label><label class="check"><input type="checkbox" class="include-guidance">지도논문 포함</label><button type="button" class="primary search-button">유사 제목 검색</button></div><div class="award-results" aria-live="polite"></div></article>`;
+ <article class="award-search"><p>수집한 수상작의 제목을 단어와 연속 글자로 비교합니다.</p><p class="coverage" role="status">자료를 불러오는 중입니다…</p><label>검색할 아이디어<input class="award-query" maxlength="1000" placeholder="예: 식물 성장, 미세플라스틱"></label>${queries.length?`<div class="query-options">${queries.map((q,i)=>`<button type="button" data-query="${i}">${esc(q)}</button>`).join('')}</div>`:''}<div class="search-options"><label>출처<select class="award-source"><option value="">전체 출처</option></select></label><label class="check"><input type="checkbox" class="include-guidance">지도논문 포함</label><button type="button" class="primary search-button">유사 제목 검색</button></div><div class="award-results" aria-live="polite"></div></article>`;
  const input=root.querySelector('.award-query');input.value=queries[0]||'';
  let loaded;
  const run=()=>{
@@ -22,7 +22,8 @@ export function mountSearch(root,queries=[]){
  async function load(){try{
   loaded=await data();if(!root.isConnected)return;
   const m=loaded.metadata;
-  root.querySelector('.coverage').textContent=`보유 ${m.total.toLocaleString()}건: 전국 ${m.sources['전국'].toLocaleString()}건 · 서울 ${m.sources['서울'].toLocaleString()}건. 지도논문 ${m.types['지도논문']}건은 기본 제외. 전국 전체 수집 완료를 의미하지 않습니다. 전국 미분류는 사용자 확인에 따라 학생으로 분류했습니다.`;
+  root.querySelector('.award-source').innerHTML='<option value="">전체 출처</option>'+Object.keys(m.sources).map(source=>`<option>${esc(source)}</option>`).join('');
+  root.querySelector('.coverage').textContent=`총 ${m.total.toLocaleString()}건: ${Object.entries(m.sources).map(([source,count])=>source+' '+count.toLocaleString()+'건').join(' · ')}. 지도논문 ${m.types['지도논문']}건은 기본 제외. ${m.coverage}`;
   if(input.value)run();
  }catch{
   if(!root.isConnected)return;

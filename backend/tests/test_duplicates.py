@@ -16,6 +16,16 @@ class Fixture:
  def __init__(self,folder):self.folder=folder;self.data_hash=digest([(r['uid'],r['title']) for r in ROWS]);self.index=None;self.factory=lambda:None
 class Duplicates(unittest.TestCase):
  def setUp(self):self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.folder=Path(self.tmp.name);self.svc=Fixture(self.folder);self.rows=copy.deepcopy(ROWS);self.checker=DuplicateService(self.svc,lambda:self.rows)
+ def test_regional_dataset_loads_and_matches_official_sources(self):
+  self.rows=json.loads((Path(__file__).resolve().parents[2]/'data'/'awards.json').read_text(encoding='utf-8'))['records']
+  known,groups,manifest=self.checker.snapshot()
+  for source in ('경기','광주','인천','경남','경북','제주'):
+   sample=next(r for r in self.rows if r['source']==source)
+   result=self.checker.check({'topics':topics(sample['title'])})['results'][0]
+   self.assertEqual(result['status'],RISK)
+   self.assertTrue(any(s['source']==source for m in result['matches'] for s in m['sources']))
+  self.rows=[dict(self.rows[-1],url='https://untrusted.example/')]
+  self.assertEqual(self.checker.check({'topics':topics()})['results'][0]['status'],INCOMPLETE)
  def test_exact_normalized_risk_without_probability_and_no_auto_merge(self):
   r=self.checker.check({'topics':topics()});entry=r['results'][0];self.assertEqual(entry['status'],RISK);self.assertTrue(entry['recommendation_hold']);self.assertFalse(r['semantic_executed']);self.assertEqual(len([m for m in entry['matches'] if m['exact_title']]),2);self.assertNotIn('score',entry['matches'][0]);self.assertIn('제목',entry['limitations'])
  def test_similar_material_different_question_not_high_risk(self):

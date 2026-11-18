@@ -1,0 +1,95 @@
+{
+  "collected_date": "2026-11-18",
+  "files": [
+    {
+      "file": "gyeonggi-2026.pdf",
+      "region": "경기",
+      "year": "2026",
+      "source_url": "https://www.gise.kr/gise/na/ntt/selectNttInfo.do?mi=10738&bbsId=6142&nttSn=1200399",
+      "download_url": "https://www.gise.kr/upload/giseadm/na/bbs_6142/ntt_1200399/doc_f91e3008-5e86-46cf-9cc0-ddc2af25455b4d9ae4c7b72eaccb9cbe.pdf",
+      "bytes": 241959,
+      "sha256": "43c63a00d304f13fe07e7c9e49db727f51d940a96a585aa77d12ea515f7fa082",
+      "records_added": 127
+    },
+    {
+      "file": "gwangju-2026.pdf",
+      "region": "광주",
+      "year": "2026",
+      "source_url": "https://gice.gen.go.kr/board.es?mid=a10301030200&bid=0007&act=view&list_no=16250",
+      "download_url": "https://gice.gen.go.kr/boardDownload.es?bid=0007&list_no=16250&seq=1",
+      "bytes": 195536,
+      "sha256": "6a8f73df3767bc6e6b326033f76cd2c86c566200e814c8b584a93562d674be12",
+      "records_added": 44
+    },
+    {
+      "file": "gwangju-2025.pdf",
+      "region": "광주",
+      "year": "2025",
+      "source_url": "https://gice.gen.go.kr/board.es?mid=a10301030200&bid=0007&act=view&list_no=12639",
+      "download_url": "https://gice.gen.go.kr/boardDownload.es?bid=0007&list_no=12639&seq=2",
+      "bytes": 189342,
+      "sha256": "4258a775357fb47307166e4cce8d56c5efe73a79dd0306d5386836b82cbc6be7",
+      "records_added": 42
+    },
+    {
+      "file": "incheon-2026.xlsx",
+      "region": "인천",
+      "year": "2026",
+      "source_url": "https://aicei.ice.go.kr/ienet/na/ntt/selectNttInfo.do?mi=1140&nttSn=126894&bbsId=1037",
+      "download_url": "https://aicei.ice.go.kr/common/nttFileDownload.do?fileKey=c5365325d73ad6dc1c4b1cb1a6e92ef2",
+      "bytes": 66586,
+      "sha256": "3d86b1602f91574d4e657b41d6d32ee002248f6fe8df2319dc89aadb7e6309b3",
+      "records_added": 198
+    },
+    {
+      "file": "jeju-2026.xlsx",
+      "region": "제주",
+      "year": "2026",
+      "source_url": "https://org.jje.go.kr/cisec/board/view.jje?boardId=BBS_0000241&dataSid=97858&menuCd=DOM_000000204005001000",
+      "download_url": "https://org.jje.go.kr/cisec/board/download.jje?boardId=BBS_0000241&menuCd=DOM_000000204005001000&paging=ok&startPage=1&dataSid=97858&command=update&fileSid=143658",
+      "bytes": 41099,
+      "sha256": "489e541cea33e3114a7c778d1207e5585deecd292a51d79bafc4232e79383112",
+      "records_added": 116
+    },
+    {
+      "file": "jeju-2025.xlsx",
+      "region": "제주",
+      "year": "2025",
+      "source_url": "https://org.jje.go.kr/cisec/board/view.jje?boardId=BBS_0000241&dataSid=87811&menuCd=DOM_000000204005001000",
+      "download_url": "https://org.jje.go.kr/cisec/board/download.jje?boardId=BBS_0000241&menuCd=DOM_000000204005001000&paging=ok&startPage=1&dataSid=87811&command=update&fileSid=124430",
+      "bytes": 32432,
+      "sha256": "ec55f5595dd83a98b00b151b89d19c39a3341a5b7ab0005d7bc51ca60ebb2f63",
+      "records_added": 89
+    },
+    {
+      "file": "gyeongbuk-2026.xlsx",
+      "region": "경북",
+      "year": "2026",
+      "source_url": "https://www.gbe.kr/gsei/na/ntt/selectNttInfo.do?mi=9981&nttSn=1620503",
+      "download_url": "https://www.gbe.kr/upload/gsei/na/bbs_3029/ntt_1620503/doc_1db0va047=a6v21=4av5d=96ve6=c144v5138v9b8a_v6209.xlsx",
+      "bytes": 43217,
+      "sha256": "d83d9c4152d4593d3ed8f3e39cbc3b20861d63448a98013ccc0a021a809281b7",
+      "records_added": 21
+    },
+    {
+      "file": "gyeongbuk-2025.xlsx",
+      "region": "경북",
+      "year": "2025",
+      "source_url": "https://www.gbe.kr/gsei/na/ntt/selectNttInfo.do?mi=9981&nttSn=1519560",
+      "download_url": "https://www.gbe.kr/upload/gsei/na/bbs_3029/ntt_1519560/doc_e614vf68c=c9v2a=4dva2=a5v7d=e5cav127fv73f8_v5711.xlsx",
+      "bytes": 41806,
+      "sha256": "00052a9f3b44539c79d107ce59e5656bb02a06f034c9f2fe487f016f9c9ad8be",
+      "records_added": 0
+    },
+    {
+      "file": "gyeongnam-2025.pdf",
+      "region": "경남",
+      "year": "2025",
+      "source_url": "https://gnse.gne.go.kr/gnse/na/ntt/selectNttInfo.do?mi=5733&bbsId=1394&nttSn=2849711",
+      "download_url": "https://gnse.gne.go.kr/common/nttFileDownload.do?fileKey=b4372543453e480806166502fc87ddef",
+      "bytes": 195874,
+      "sha256": "d4f3b54267d010af701048942baef21c98e4b01cc6dd8070810cd0e0e24d9d24",
+      "records_added": 122
+    }
+  ]
+}

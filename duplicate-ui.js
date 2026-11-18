@@ -1,6 +1,6 @@
 import {duplicateTopics,duplicateSourceKey} from './duplicate.mjs';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function link(url){try{const u=new URL(url);return u.protocol==='https:'&&['www.science.go.kr','ssei.sen.go.kr'].includes(u.hostname)?u.href:null}catch{return null}}
+function link(url){try{const u=new URL(url);return u.protocol==='https:'&&['www.science.go.kr','ssei.sen.go.kr','www.gise.kr','gice.gen.go.kr','aicei.ice.go.kr','gnse.gne.go.kr','www.gbe.kr','org.jje.go.kr'].includes(u.hostname)?u.href:null}catch{return null}}
 export function mountDuplicates(root,project,actions){
  let topics=duplicateTopics(project),sourceKey=duplicateSourceKey(project),manifest=null,busy=false;
  const previous=project.duplicateCheck;let active=previous?.sourceKey===sourceKey?previous.result:null;
