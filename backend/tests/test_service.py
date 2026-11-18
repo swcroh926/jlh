@@ -1,3 +1,4 @@
+from backend.rubric import CONDITIONS
 import copy,json,os,tempfile,threading,unittest,io
 from pathlib import Path
 from unittest.mock import patch
@@ -8,7 +9,7 @@ from backend.server import handler
 
 INPUT={'ideas':['빛의 색에 따른 식물 성장','물의 온도에 따른 변화','종이비행기 모양 비교'],'grade':'초등 5학년','budget':50000,'weeks':4,'threshold':70,'name':'NEVER_SEND_NAME'}
 def response(score=80):
- return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{a:{'score':score,'reason':'조건 확인 필요'} for a in AXES},'source_ids':[],'uncertainties':['제목만 비교함'],'improvements':['조건을 구체화하세요']} for i in range(3)]})}]}]}
+ return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{a:{'score':score,'reason':'조건 확인 필요'} for a in AXES},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':['제목만 비교함'],'improvements':['조건을 구체화하세요']} for i in range(3)]})}]}]}
 class Fake:
  def __init__(self,data=None):self.data=data or response();self.calls=[]
  def call(self,path,payload):self.calls.append((path,payload));return copy.deepcopy(self.data)

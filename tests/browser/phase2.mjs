@@ -1,0 +1,31 @@
+// Run with the test-only provider server below. No paid API calls.
+import {createRequire} from 'node:module';import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8014';
+const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+try{
+ const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ let analyses=0,evalRequest;
+ p.on('request',r=>{if(r.url().endsWith('/api/interests/analyze')){analyses++;const body=r.postDataJSON();assert.deepEqual(Object.keys(body),['topics']);assert.ok(body.topics.every(t=>t.origin==='original'))}if(r.url().endsWith('/api/evaluate'))evalRequest=r.postDataJSON()});
+ await p.goto(base);await p.locator('#ideas-form [name=name]').fill('PRIVATE-NAME');await p.locator('[name=region]').fill('PRIVATE-REGION');await p.locator('[name=ideas]').fill('식물 식물 식물 성장과 빛\n온도에 따른 식물 성장\n새로운 센서와 식물 관리');await p.getByRole('button',{name:'주제 목록 확인하기'}).click();await p.locator('#confirm-topics').click();
+ await p.locator('.interest-analyze:not([disabled])').waitFor();assert.ok(await p.locator('.eval-run').isDisabled());assert.equal(analyses,0);
+ p.once('dialog',d=>d.dismiss());await p.locator('.interest-analyze').click();assert.equal(analyses,0);
+ p.once('dialog',d=>d.accept());await p.locator('.interest-analyze').click();await p.locator('.interest-results .banner').waitFor();assert.equal(analyses,1);
+ assert.match(await p.locator('.interest-results').innerText(),/2\/3개 \(66.7%\)/);assert.match(await p.locator('.interest-domain-summary').innerText(),/3\/3개 \(100%\)/);assert.ok(await p.locator('.eval-run').isDisabled());
+ const first=p.locator('.interest-edit-row').first();await first.locator('.interest-evidence').nth(1).uncheck();await first.locator('.interest-label').fill('교사 수정 성장');await p.locator('.interest-confirm').click();await p.locator('.interest-results .banner').filter({hasText:'확정한 관심사'}).waitFor();await p.locator('.duplicate-lexical').click();await p.locator('.duplicate-results .duplicate-result').first().waitFor();await p.locator('.eval-run:not([disabled])').waitFor();assert.match(await p.locator('.interest-results').innerText(),/1\/3개 \(33.3%\)/);
+ let stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('jlh-project-v1')).project);const firstVersion=stored.interestAnalysis.result.version;assert.equal(stored.interestAnalysis.result.confirmed,true);assert.equal(stored.resultHistory.at(-1).kind,'interest');
+ await p.locator('.eval-run').click();await p.locator('.eval-results .award-result').first().waitFor();assert.equal(evalRequest.interest_version,firstVersion);assert.ok(!('name' in evalRequest));assert.ok(!('region' in evalRequest));
+ await p.locator('.eval-select').first().click();await p.locator('#record').click();await p.locator('[data-note="0"][data-field="result"]').fill('관심사 수정 후에도 보존할 기록');await p.locator('[data-step="1"]').click();
+ await p.locator('.interest-manual').click();await p.locator('.interest-label').first().fill('두번째 교사 분류');assert.ok(await p.locator('.eval-run').isDisabled());assert.equal(await p.locator('.eval-select').count(),0);
+ await p.reload();await p.locator('.interest-editor').waitFor();assert.equal(await p.locator('.interest-label').first().inputValue(),'두번째 교사 분류');assert.ok(await p.locator('.eval-run').isDisabled());
+ await p.locator('.interest-confirm').click();await p.locator('.eval-run:not([disabled])').waitFor();stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('jlh-project-v1')).project);assert.notEqual(stored.interestAnalysis.result.version,firstVersion);assert.equal(stored.notes[0].result,'관심사 수정 후에도 보존할 기록');assert.ok(stored.staleResults.evaluation);
+ // Inject future generated data only: it must not affect original profile validity/counts.
+ await p.evaluate(()=>{const key='jlh-project-v1',data=JSON.parse(localStorage.getItem(key));data.project.generatedTopics=[{id:'generated',originalText:'우주 탐구',origin:'generated'}];data.project.topics.push({id:'generated',originalText:'우주 탐구',origin:'generated'});localStorage.setItem(key,JSON.stringify(data))});await p.reload();assert.ok(await p.locator('.eval-run').isDisabled());assert.match(await p.locator('.interest-panel').innerText(),/원본 3개만/);
+ await p.setViewportSize({width:390,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await p.screenshot({path:'/workspace/deliverables/spec-phase2-interests.png',fullPage:true});
+ // Changed source + invalid model output: never re-use prior profile or save success.
+ await p.locator('[data-step="0"]').click();await p.locator('[name=ideas]').fill('MALFORMED 새로운 원본\n온도에 따른 성장\n센서 관리');await p.getByRole('button',{name:'주제 목록 확인하기'}).click();await p.locator('#confirm-topics').click();assert.match(await p.locator('.interest-status').innerText(),/재분석/);assert.ok(await p.locator('.eval-run').isDisabled());
+ await p.locator('.interest-analyze:not([disabled])').waitFor();p.once('dialog',d=>d.accept());await p.locator('.interest-analyze').click();await p.locator('.interest-status').filter({hasText:'검증하지 못했습니다'}).waitFor();stored=await p.evaluate(()=>JSON.parse(localStorage.getItem('jlh-project-v1')).project);assert.notEqual(stored.interestAnalysis.sourceKey,JSON.stringify(stored.topics));assert.ok(stored.staleResults.interest);
+ // Manual confirmation works with no AI key/health readiness; no provider requests.
+ await p.route('**/api/health',r=>r.fulfill({json:{configured:false,interests_available:true}}));await p.reload();await p.locator('.interest-manual').click();await p.locator('.interest-uncertainties').fill('새 원본만으로 관심사를 확정하기 어려움');await p.locator('.interest-confirm').click();await p.locator('.interest-results .banner').filter({hasText:'확정한 관심사'}).waitFor();assert.ok(await p.locator('.eval-run').isDisabled());
+ assert.deepEqual(errors,[]);console.log('PASS phase2: AI draft via mocked model + real server, counts, cost confirmation, teacher edits, profile version/cache key, evaluation gate, original-only IDs, persistence, stale profile, failed output preservation, no-key manual confirm, mobile.');
+}finally{await b.close()}
