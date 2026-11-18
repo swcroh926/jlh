@@ -1,3 +1,4 @@
+import {confirmedInterest} from './interest.mjs';
 // Phase 1: input/default rules. Existing evaluation is deliberately unchanged.
 export const MAX_ORIGINAL_TOPICS = 20;
 export const DEFAULT_SETTINGS = Object.freeze({budget:300000,weeks:8,sessionsPerWeek:1,hoursPerSession:3,location:'학원'});
@@ -51,9 +52,10 @@ export function confirmTopics(project){
  const old=project.topics||[];
  return {...project,topics:project.ideas.split(/\r?\n/).filter(line=>line.trim()).map(raw=>old.find(t=>t.originalText===raw)||{id:id(),originalText:raw,origin:'original'}),confirmedIdeas:project.ideas};
 }
-export function evaluationKey(project){return JSON.stringify([project.ideas,project.grade,conditions(project)])}
+export function evaluationKey(project){return JSON.stringify([project.ideas,project.grade,conditions(project),confirmedInterest(project)?.version||null])}
 export function evaluationPayload(project,{equipment,interests,threshold}){
  const c=conditions(project);
  // A whitelist: name and region are intentionally never sent to the model.
- return {ideas:splitTopics(project.ideas),grade:project.grade,...c,equipment,interests,threshold};
+ const profile=confirmedInterest(project);
+ return {ideas:splitTopics(project.ideas),grade:project.grade,...c,equipment,interests,threshold,...(profile?{interest_version:profile.version}:{})};
 }
