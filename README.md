@@ -40,3 +40,12 @@ search.mjs는 공백·기호를 정규화하고 제목 구절 및 2글자 조각
 ## 공개 AI 서버 배포 준비
 
 Render용 render.yaml과 Gunicorn 기반 시험 서버, 접근 코드/서명 쿠키, SQLite 지속형 요청 제한을 추가했습니다. 화면과 API를 같은 Render 주소로 제공합니다. [배포 안내](docs/RENDER_DEPLOY.md)를 따라 계정 연결·비밀 값 입력·비용 검토 후 배포할 수 있습니다. 공개 서버가 실제 생성되었다는 의미는 아닙니다.
+
+## 기능명세 기반 순차 개발 (로컬 작업 브랜치)
+
+- 원본 명세: [docs/FUNCTIONAL_SPEC_v1.1.md](docs/FUNCTIONAL_SPEC_v1.1.md)
+- 구현 비교·순서·직접 확인법: [docs/SPEC_GAP_ANALYSIS.md](docs/SPEC_GAP_ANALYSIS.md)
+- 사용자 결정: 원본 주제 최대 20개. 첫 작업은 선생님 기본값/학생 조건/문서 가져오기·확인/원본 ID/기존 기록 보존입니다.
+- 실행: `python3 -m backend.server --port 8012` (Windows는 `py -3 -m backend.server --port 8012`). 정적 서버의 TXT 입력은 가능하지만 DOCX/HWPX/HWP는 이 로컬 Python 서버가 필요합니다.
+- HWP는 hwp5txt가 설치된 환경에서만 시도하며 미설치/실패 시 HWPX·DOCX·TXT 변환을 안내합니다. OCR은 제외합니다.
+- 실제 AI는 아직 기존 4항목 평가입니다. 5항목 가중 평가와 관심사/중복검사/생성/실험설계는 다음 순차 작업입니다. 이 브랜치의 공개 배포는 진행하지 않습니다.

@@ -19,8 +19,10 @@ def validate(body):
  if not isinstance(ideas,list) or not 1<=len(ideas)<=20 or any(not isinstance(x,str) or not 2<=len(x.strip())<=500 for x in ideas):raise ServiceError('아이디어는 2~500자씩 1~20개 입력해주세요.',400)
  if not isinstance(grade,str) or not 1<=len(grade)<=30:raise ServiceError('학년을 확인해주세요.',400)
  out={'ideas':[x.strip() for x in ideas],'grade':grade}
+ if len(set(out['ideas']))!=len(out['ideas']):raise ServiceError('완전히 동일한 원본 주제가 있습니다. 주제 목록을 확인해주세요.',400)
  for field,maximum in [('budget',10000000),('weeks',104)]:
-  val=body.get(field)
+  val=body.get(field,300000 if field=='budget' else 8)
+  if field=='budget' and (val is None or val==''):val=300000
   if isinstance(val,bool) or not isinstance(val,(int,float)) or not math.isfinite(val) or not 0<=val<=maximum or (field=='weeks' and val<1):raise ServiceError('예산과 준비 기간을 확인해주세요.',400)
   out[field]=val
  for field in ['equipment','interests']:
@@ -30,6 +32,12 @@ def validate(body):
  threshold=body.get('threshold',70)
  if isinstance(threshold,bool) or not isinstance(threshold,(int,float)) or not math.isfinite(threshold) or not 0<=threshold<=100:raise ServiceError('기준 점수는 0~100 사이여야 합니다.',400)
  out['threshold']=threshold
+ # Optional for older clients, always supplied by the new profile form.
+ hours=body.get('hoursPerSession',3);sessions=body.get('sessionsPerWeek',1);location=body.get('location','미확인')
+ if isinstance(hours,bool) or not isinstance(hours,(int,float)) or not math.isfinite(hours) or not 0.5<=hours<=24:raise ServiceError('회당 수업 시간을 확인해주세요.',400)
+ if type(sessions) is not int or sessions!=1:raise ServiceError('첫 버전의 수업 빈도는 주 1회입니다.',400)
+ if not isinstance(location,str) or not 1<=len(location.strip())<=100:raise ServiceError('실험 장소를 확인해주세요.',400)
+ out.update(hoursPerSession=hours,sessionsPerWeek=1,location=location.strip())
  return out
 
 class OpenAI:

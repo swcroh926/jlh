@@ -4,9 +4,10 @@ from pathlib import Path
 from collections import deque
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse
+from .documents import extract_document
 from .service import ROOT,EvaluationService,ServiceError,key,OpenAI,build_index
 
-FILES={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/model.mjs':'model.mjs','/style.css':'style.css','/search-ui.js':'search-ui.js','/search.mjs':'search.mjs','/eval-ui.js':'eval-ui.js','/data/awards.json':'data/awards.json'}
+FILES={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/model.mjs':'model.mjs','/style.css':'style.css','/search-ui.js':'search-ui.js','/search.mjs':'search.mjs','/eval-ui.js':'eval-ui.js','/input-ui.js':'input-ui.js','/project.mjs':'project.mjs','/data/awards.json':'data/awards.json'}
 
 def handler(service):
  class Handler(BaseHTTPRequestHandler):
@@ -27,13 +28,17 @@ def handler(service):
    data=(ROOT/FILES[path]).read_bytes();self.send_response(200);self.send_header('Content-Type',('text/javascript' if path.endswith('.mjs') else mimetypes.guess_type(FILES[path])[0] or 'application/octet-stream')+'; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(data)
   def do_POST(self):
    if not self.trusted():return self.reply(403,{'error':'접근할 수 없습니다.'})
-   if self.path!='/api/evaluate':return self.reply(404,{'error':'찾을 수 없습니다.'})
+   if self.path not in ('/api/evaluate','/api/extract-topics'):return self.reply(404,{'error':'찾을 수 없습니다.'})
    if self.headers.get('Content-Type','').split(';')[0]!='application/json':return self.reply(415,{'error':'JSON 요청이 필요합니다.'})
    try:
     length=int(self.headers.get('Content-Length','0'))
-    if not 0<length<=40000:raise ValueError()
+    if not 0<length<=(6_800_000 if self.path=='/api/extract-topics' else 40000):raise ValueError()
     payload=json.loads(self.rfile.read(length))
    except (ValueError,UnicodeError):return self.reply(400,{'error':'요청 크기 또는 형식을 확인해주세요.'})
+   if self.path=='/api/extract-topics':
+    try:return self.reply(200,extract_document(payload))
+    except ServiceError as e:return self.reply(e.status,{'error':str(e)})
+    except Exception:return self.reply(500,{'error':'파일을 추출하지 못했습니다.'})
    if not self.semaphore.acquire(blocking=False):return self.reply(429,{'error':'평가가 진행 중입니다. 잠시 후 다시 시도해주세요.'})
    try:
     now=time.monotonic()
