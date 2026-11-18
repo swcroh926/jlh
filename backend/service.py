@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib import request,error
 
 ROOT=Path(__file__).resolve().parents[1]
-RUBRIC='science-title-evaluation-v1.1-interests'
+RUBRIC='science-title-evaluation-v1.2-duplicate-evidence'
 MODEL=os.environ.get('EVAL_MODEL','gpt-4.1-mini')
 EMBED_MODEL=os.environ.get('EMBED_MODEL','text-embedding-3-small')
 AXES=('originality','award_fit','feasibility','interest')
@@ -42,6 +42,17 @@ def validate(body):
   version=body['interest_version']
   if not isinstance(version,str) or not 1<=len(version)<=100:raise ServiceError('관심사 버전을 확인해주세요.',400)
   out['interest_version']=version
+ if 'duplicate_version' in body:
+  version=body['duplicate_version']
+  if not isinstance(version,str) or not 1<=len(version)<=100:raise ServiceError('중복 검사 버전을 확인해주세요.',400)
+  out['duplicate_version']=version
+  if 'duplicate_topics' in body:
+   from .duplicates import targets_from
+   out['duplicate_topics']=targets_from({'topics':body['duplicate_topics']})
+  if 'evaluation_topic_ids' in body:
+   ids=body['evaluation_topic_ids']
+   if not isinstance(ids,list) or any(not isinstance(uid,str) for uid in ids):raise ServiceError('평가 주제 ID를 확인해주세요.',400)
+   out['evaluation_topic_ids']=ids
  return out
 
 class OpenAI:
@@ -89,6 +100,7 @@ feasibility=학년/예산/기간/장비에서 직접 수행 가능성, interest=
 공식 심사 기준은 아직 제공되지 않았으므로 award_fit은 위 일반 탐구 기준에 따른 임시 적합도다.
 안전, 장비, 비용, 관찰 대기 시간이 불명확하면 reason과 uncertainties에 명시하라. 비용/시간을 실제 조사했다고 주장하지 마라.
 confirmed_interest_profile이 있으면 선생님이 확정한 원본 기반 관심사를 관심도 평가의 우선 근거로 사용하라. 새로 평가하는 주제로 관심사를 바꾸지 마라. 관심사가 미정으로 확정됐다면 추정의 한계를 명시하라. 관심사는 명시하지 않았으면 원래 아이디어 목록에서 추정임을 명시하라. 각 reason은 간결하고 구체적으로 작성하라.
+duplicate_report가 있으면 독창성 근거에 실제 비교한 제목의 공통점과 확인 가능한 차이를 설명하라. 소재가 같다는 이유만으로 감점하지 마라. 위험 상태를 숨기거나 임의로 중복도 감점을 추가하지 마라. 검사 미완료면 독창성 판단 한계를 명시하라.
 source_ids에는 해당 아이디어의 supplied_sources 안에서 실제 참고한 ID만 넣어라. 출처 제목/URL을 새로 만들어내지 마라.
 '''
 
@@ -142,11 +154,17 @@ class EvaluationService:
   if inputs.get('interest_version'):
    from .interests import InterestService
    inputs['confirmed_interest_profile']=InterestService(self.folder).confirmed_profile(inputs['interest_version'],inputs['ideas'])
+  check=None
+  if inputs.get('duplicate_version'):
+   from .duplicates import DuplicateService
+   check=DuplicateService(self).evaluation_context(inputs['duplicate_version'],inputs['ideas'],inputs.get('duplicate_topics'),inputs.get('evaluation_topic_ids'))
+   inputs['duplicate_report']={'version':check['version'],'manifest':check['manifest'],'method':check['method'],'results':check['results']}
   identity=digest({'input':inputs,'model':MODEL,'rubric':RUBRIC,'data':self.data_hash,'search':'semantic' if self.index else 'lexical'})
   with sqlite3.connect(self.database) as db:
    found=db.execute('SELECT created,result FROM evaluations WHERE cache_key=?',(identity,)).fetchone()
   if found and time.time()-found[0]<86400:return dict(json.loads(found[1]),cached=True)
-  client=self.factory();sources=self.retrieve(inputs['ideas'],client)
+  client=self.factory()
+  sources=[[source for candidate in entry['matches'] for source in candidate['sources']] for entry in check['results']] if check else self.retrieve(inputs['ideas'],client)
   context={**inputs,'supplied_sources':[[{'id':r['uid'],'title':r['title'],'year':r['year'],'source':r['source']} for r in group] for group in sources]}
   response=client.call('responses',{'model':MODEL,'store':False,'instructions':INSTRUCTIONS,'input':json.dumps(context,ensure_ascii=False),'max_output_tokens':12000,'text':{'format':{'type':'json_schema','name':'idea_evaluation','strict':True,'schema':schema()}}})
   try:
@@ -166,9 +184,14 @@ class EvaluationService:
     allowed={r['uid']:r for r in sources[i]}
     if any(uid not in allowed for uid in e['source_ids']):raise ValueError('citation')
     average=round(sum(e[a]['score'] for a in AXES)/4,1)
-    results.append({**e,'title':inputs['ideas'][i],'average':average,'passed':average>inputs['threshold'],'sources':[allowed[uid] for uid in dict.fromkeys(e['source_ids'])]})
+    duplicate=check['results'][i] if check else None
+    hold=duplicate['recommendation_hold'] if duplicate else False
+    results.append({**e,'recommendation_hold':hold,'duplicate_status':duplicate['status'] if duplicate else None,'candidate_group_id':duplicate['candidate_group_id'] if duplicate else str(i),'recommendable':average>inputs['threshold'] and not hold,'title':inputs['ideas'][i],'average':average,'passed':average>inputs['threshold'],'sources':[allowed[uid] for uid in dict.fromkeys(e['source_ids'])]})
   except (ValueError,TypeError,KeyError):raise ServiceError('AI 평가 형식이나 출처를 검증하지 못했습니다. 결과를 저장하지 않았습니다.') from None
-  passed=sorted([r for r in results if r['passed']],key=lambda r:-r['average'])
-  result={'evaluations':results,'passed_count':len(passed),'top_three_indices':[r['idea_index'] for r in passed[:3]],'next_step':'select' if len(passed)>=3 else 'needs_more_candidates','model':MODEL,'rubric_version':RUBRIC,'threshold':inputs['threshold'],'search_mode':'semantic' if self.index else 'lexical','created_at':time.time(),'cached':False,'interest_version':inputs.get('interest_version')}
+  eligible=sorted([r for r in results if r['recommendable']],key=lambda r:-r['average'])
+  passed=[];groups=set()
+  for entry in eligible:
+   if entry['candidate_group_id'] not in groups:passed.append(entry);groups.add(entry['candidate_group_id'])
+  result={'evaluations':results,'passed_count':len(passed),'top_three_indices':[r['idea_index'] for r in passed[:3]],'next_step':'select' if len(passed)>=3 else 'needs_more_candidates','model':MODEL,'rubric_version':RUBRIC,'threshold':inputs['threshold'],'search_mode':check['method'] if check else 'semantic' if self.index else 'lexical','created_at':time.time(),'cached':False,'interest_version':inputs.get('interest_version'),'duplicate_version':inputs.get('duplicate_version'),'score_passed_count':sum(r['passed'] for r in results)}
   with sqlite3.connect(self.database) as db:db.execute('INSERT OR REPLACE INTO evaluations VALUES (?,?,?)',(identity,time.time(),json.dumps(result,ensure_ascii=False)))
   return result
