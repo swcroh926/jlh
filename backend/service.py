@@ -16,9 +16,13 @@ def digest(value):return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort
 def validate(body):
  if not isinstance(body,dict):raise ServiceError('요청 형식이 올바르지 않습니다.',400)
  ideas=body.get('ideas');grade=body.get('grade')
- if not isinstance(ideas,list) or not 1<=len(ideas)<=20 or any(not isinstance(x,str) or not 2<=len(x.strip())<=500 for x in ideas):raise ServiceError('아이디어는 2~500자씩 1~20개 입력해주세요.',400)
+ if not isinstance(ideas,list) or not 1<=len(ideas)<=(30 if body.get('original_ideas') else 20) or any(not isinstance(x,str) or not 2<=len(x.strip())<=500 for x in ideas):raise ServiceError('아이디어는 2~500자씩 원본20개, 원본·생성 합산30개 이내로 입력해주세요.',400)
  if not isinstance(grade,str) or not 1<=len(grade)<=30:raise ServiceError('학년을 확인해주세요.',400)
  out={'ideas':[x.strip() for x in ideas],'grade':grade}
+ if 'original_ideas' in body:
+  originals=body['original_ideas']
+  if not isinstance(originals,list) or not 1<=len(originals)<=20 or any(not isinstance(t,str) or not 2<=len(t.strip())<=500 for t in originals):raise ServiceError('원본 목록을 확인해주세요.',400)
+  out['original_ideas']=[t.strip() for t in originals]
  if len(set(out['ideas']))!=len(out['ideas']):raise ServiceError('완전히 동일한 원본 주제가 있습니다. 주제 목록을 확인해주세요.',400)
  for field,maximum in [('budget',10000000),('weeks',104)]:
   val=body.get(field,300000 if field=='budget' else 8)
@@ -144,7 +148,9 @@ class EvaluationService:
    candidate=json.loads(path.read_text())
    if candidate.get('fingerprint')==self.data_hash and candidate.get('model')==EMBED_MODEL and all(r['uid'] in candidate.get('vectors',{}) for r in self.rows):self.index=candidate['vectors']
   self.database=self.folder/'evaluations.sqlite3'
-  with sqlite3.connect(self.database) as db:db.execute('CREATE TABLE IF NOT EXISTS evaluations (cache_key TEXT PRIMARY KEY, created REAL, result TEXT)')
+  with sqlite3.connect(self.database) as db:
+   db.execute('CREATE TABLE IF NOT EXISTS evaluations (cache_key TEXT PRIMARY KEY, created REAL, result TEXT)')
+   db.execute('CREATE TABLE IF NOT EXISTS evaluation_inputs (cache_key TEXT PRIMARY KEY, inputs TEXT)')
  def retrieve(self,ideas,client):
   vectors=client.embed(ideas) if self.index else None
   sources=[]
@@ -159,12 +165,14 @@ class EvaluationService:
   inputs=validate(payload)
   if inputs.get('interest_version'):
    from .interests import InterestService
-   inputs['confirmed_interest_profile']=InterestService(self.folder).confirmed_profile(inputs['interest_version'],inputs['ideas'])
+   inputs['confirmed_interest_profile']=InterestService(self.folder).confirmed_profile(inputs['interest_version'],inputs.get('original_ideas',inputs['ideas']))
   check=None
   if inputs.get('duplicate_version'):
    from .duplicates import DuplicateService
    check=DuplicateService(self).evaluation_context(inputs['duplicate_version'],inputs['ideas'],inputs.get('duplicate_topics'),inputs.get('evaluation_topic_ids'))
+   if inputs.get('original_ideas') and [t['originalText'].strip() for t in check['topics'] if t['origin']=='original']!=inputs['original_ideas']:raise ServiceError('원본 관심사 근거와 검사 목록이 다릅니다.',409)
    inputs['duplicate_report']={'version':check['version'],'manifest':check['manifest'],'method':check['method'],'results':check['results']}
+  if inputs.get('original_ideas') and (not check or not inputs.get('interest_version')):raise ServiceError('생성 주제 평가에는 확정 관심사와 중복 검사가 필요합니다.',400)
   identity=digest({'input':inputs,'model':MODEL,'rubric':RUBRIC,'data':self.data_hash,'search':'semantic' if self.index else 'lexical'})
   with sqlite3.connect(self.database) as db:
    found=db.execute('SELECT created,result FROM evaluations WHERE cache_key=?',(identity,)).fetchone()
@@ -199,6 +207,8 @@ class EvaluationService:
   passed=[];groups=set()
   for entry in eligible:
    if entry['candidate_group_id'] not in groups:passed.append(entry);groups.add(entry['candidate_group_id'])
-  result={'evaluations':results,'passed_count':len(passed),'top_three_indices':[r['idea_index'] for r in passed[:3]],'next_step':'select' if len(passed)>=3 else 'needs_more_candidates','model':MODEL,'rubric_version':RUBRIC,'weights':WEIGHTS,'threshold':80,'search_mode':check['method'] if check else 'semantic' if self.index else 'lexical','created_at':time.time(),'cached':False,'interest_version':inputs.get('interest_version'),'duplicate_version':inputs.get('duplicate_version'),'score_passed_count':sum(r['passed'] for r in results)}
-  with sqlite3.connect(self.database) as db:db.execute('INSERT OR REPLACE INTO evaluations VALUES (?,?,?)',(identity,time.time(),json.dumps(result,ensure_ascii=False)))
+  result={'evaluation_id':identity,'evaluations':results,'passed_count':len(passed),'top_three_indices':[r['idea_index'] for r in passed[:3]],'next_step':'select' if len(passed)>=3 else 'needs_more_candidates','model':MODEL,'rubric_version':RUBRIC,'weights':WEIGHTS,'threshold':80,'search_mode':check['method'] if check else 'semantic' if self.index else 'lexical','created_at':time.time(),'cached':False,'interest_version':inputs.get('interest_version'),'duplicate_version':inputs.get('duplicate_version'),'score_passed_count':sum(r['passed'] for r in results)}
+  with sqlite3.connect(self.database) as db:
+   db.execute('INSERT OR REPLACE INTO evaluations VALUES (?,?,?)',(identity,time.time(),json.dumps(result,ensure_ascii=False)))
+   db.execute('INSERT OR REPLACE INTO evaluation_inputs VALUES (?,?)',(identity,json.dumps({k:v for k,v in inputs.items() if k not in ('duplicate_report','confirmed_interest_profile')},ensure_ascii=False)))
   return result

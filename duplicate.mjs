@@ -1,7 +1,7 @@
 export function duplicateTopics(project){
  const originals=(project.topics||[]).filter(t=>t.origin==='original');
- const generated=(project.generatedTopics||[]).map(t=>({id:t.id,originalText:t.originalText||t.title,origin:'generated'}));
- return [...originals,...generated].map(t=>({id:t.id,originalText:t.originalText,origin:t.origin,...Object.fromEntries(['question','target','method','measurement'].map(k=>[k,project.duplicateDetails?.[t.id]?.[k]||'']))}));
+ const generated=(project.generatedTopics||[]).map(t=>({...t,id:t.id,originalText:t.originalText||t.title,origin:'generated'}));
+ return [...originals,...generated].map(t=>({id:t.id,originalText:t.originalText,origin:t.origin,...Object.fromEntries(['question','target','method','measurement'].map(k=>[k,project.duplicateDetails?.[t.id]?.[k]??t[k]??'']))}));
 }
 export function duplicateSourceKey(project){return JSON.stringify(duplicateTopics(project))}
 export function currentDuplicate(project){

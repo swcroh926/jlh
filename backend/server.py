@@ -7,13 +7,15 @@ from urllib.parse import urlparse
 from .documents import extract_document
 from .interests import InterestService
 from .duplicates import DuplicateService
+from .generation import GenerationService
 from .service import ROOT,EvaluationService,ServiceError,key,OpenAI,build_index
 
-FILES={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/model.mjs':'model.mjs','/style.css':'style.css','/search-ui.js':'search-ui.js','/search.mjs':'search.mjs','/eval-ui.js':'eval-ui.js','/input-ui.js':'input-ui.js','/project.mjs':'project.mjs','/interest.mjs':'interest.mjs','/interest-ui.js':'interest-ui.js','/duplicate.mjs':'duplicate.mjs','/duplicate-ui.js':'duplicate-ui.js','/data/awards.json':'data/awards.json'}
+FILES={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/model.mjs':'model.mjs','/style.css':'style.css','/search-ui.js':'search-ui.js','/search.mjs':'search.mjs','/eval-ui.js':'eval-ui.js','/input-ui.js':'input-ui.js','/project.mjs':'project.mjs','/interest.mjs':'interest.mjs','/interest-ui.js':'interest-ui.js','/duplicate.mjs':'duplicate.mjs','/duplicate-ui.js':'duplicate-ui.js','/generation-ui.js':'generation-ui.js','/data/awards.json':'data/awards.json'}
 
 def handler(service):
  interests=InterestService(service.folder,service.factory)
  duplicates=DuplicateService(service)
+ generation=GenerationService(service)
  class Handler(BaseHTTPRequestHandler):
   semaphore=threading.BoundedSemaphore(1)
   attempts=deque()
@@ -36,7 +38,7 @@ def handler(service):
    data=(ROOT/FILES[path]).read_bytes();self.send_response(200);self.send_header('Content-Type',('text/javascript' if path.endswith('.mjs') else mimetypes.guess_type(FILES[path])[0] or 'application/octet-stream')+'; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(data)
   def do_POST(self):
    if not self.trusted():return self.reply(403,{'error':'접근할 수 없습니다.'})
-   if self.path not in ('/api/evaluate','/api/extract-topics','/api/interests/analyze','/api/interests/confirm','/api/duplicates/check','/api/duplicates/review','/api/duplicates/group'):return self.reply(404,{'error':'찾을 수 없습니다.'})
+   if self.path not in ('/api/evaluate','/api/extract-topics','/api/interests/analyze','/api/interests/confirm','/api/duplicates/check','/api/duplicates/review','/api/duplicates/group','/api/generate'):return self.reply(404,{'error':'찾을 수 없습니다.'})
    if self.headers.get('Content-Type','').split(';')[0]!='application/json':return self.reply(415,{'error':'JSON 요청이 필요합니다.'})
    try:
     length=int(self.headers.get('Content-Length','0'))
@@ -65,7 +67,7 @@ def handler(service):
     while self.attempts and now-self.attempts[0]>3600:self.attempts.popleft()
     if len(self.attempts)>=10:return self.reply(429,{'error':'개발용 시간당 요청 한도(10회)에 도달했습니다.'})
     self.attempts.append(now)
-    self.reply(200,duplicates.check(payload) if self.path=='/api/duplicates/check' else interests.analyze(payload) if self.path=='/api/interests/analyze' else service.evaluate(payload))
+    self.reply(200,generation.run(payload) if self.path=='/api/generate' else duplicates.check(payload) if self.path=='/api/duplicates/check' else interests.analyze(payload) if self.path=='/api/interests/analyze' else service.evaluate(payload))
    except ServiceError as e:self.reply(e.status,{'error':str(e)})
    except Exception:self.reply(500,{'error':'평가 처리 중 오류가 발생했습니다.'})
    finally:self.semaphore.release()

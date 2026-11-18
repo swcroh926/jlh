@@ -58,5 +58,5 @@ export function evaluationPayload(project,{equipment,interests,threshold}){
  const c=conditions(project);
  // A whitelist: name and region are intentionally never sent to the model.
  const profile=confirmedInterest(project),check=currentDuplicate(project);
- return {ideas:splitTopics(project.ideas),grade:project.grade,...c,equipment,interests,threshold:80,...(profile?{interest_version:profile.version}:{}),...(check?{duplicate_version:check.version,duplicate_topics:duplicateTopics(project),evaluation_topic_ids:project.topics.filter(t=>t.origin==='original').map(t=>t.id)}:{})};
+ return {ideas:duplicateTopics(project).map(t=>t.originalText),...(project.generatedTopics?.length?{original_ideas:splitTopics(project.ideas)}:{}),grade:project.grade,...c,equipment,interests,threshold:80,...(profile?{interest_version:profile.version}:{}),...(check?{duplicate_version:check.version,duplicate_topics:duplicateTopics(project),evaluation_topic_ids:duplicateTopics(project).map(t=>t.id)}:{})};
 }
