@@ -63,7 +63,7 @@
 
 검증한 프로필만 모델 문맥의 confirmed_interest_profile로 전달합니다. 사용자가 계산값이나 근거를 평가 요청에 임의로 넣어도 그 값을 신뢰하지 않습니다.
 
-관심사 버전은 평가 캐시 키에 포함하므로 수정 후에는 이전 관심도 점수를 재사용하지 않습니다. 관심사 단계에서 평가 지침 버전을 science-title-evaluation-v1.1-interests로 갱신했고, 후속 중복 근거 연결로 현재 버전은 science-title-evaluation-v1.2-duplicate-evidence입니다. **다섯 항목/가중치/80점 개편은 아직 다음 작업입니다.**
+관심사 버전은 평가 캐시 키에 포함하므로 수정 후에는 이전 관심도 점수를 재사용하지 않습니다. 관심사 단계에서 평가 지침 버전을 science-title-evaluation-v1.1-interests로 갱신했고, 후속 중복 근거 연결로 현재 버전은 science-title-evaluation-v1.2-duplicate-evidence입니다. 후속 개편으로 현재 science-weighted-evaluation-v2의 다섯 항목/가중치/80점 기준을 사용합니다. [평가 안내](EVAL_TOPIC.md)를 참고하세요.
 
 기존 API와 캐시의 호환성을 위해 구버전 클라이언트의 interest_version 없는 평가 요청까지 서버에서 강제 차단하지는 않습니다. 새 화면에서는 관심사 확정을 요구합니다.
 

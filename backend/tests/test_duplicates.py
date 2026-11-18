@@ -1,3 +1,4 @@
+from backend.rubric import CONDITIONS
 import copy,json,math,sqlite3,tempfile,threading,unittest
 from http.server import ThreadingHTTPServer
 from urllib import request
@@ -78,7 +79,7 @@ class EvaluationGating(unittest.TestCase):
    captured=[]
    class Fake:
     def call(self,path,payload):
-     captured.append(json.loads(payload['input']));return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':0,**{k:{'score':90,'reason':'검토 필요'} for k in ('originality','award_fit','feasibility','interest')},'source_ids':[],'uncertainties':[],'improvements':[]}]})}]}]}
+     captured.append(json.loads(payload['input']));return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':0,**{k:{'score':90,'reason':'검토 필요'} for k in ('originality','inquiry','feasibility','utility','interest')},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]}]})}]}]}
    s=EvaluationService(Path(d),Fake);s.index={r['uid']:[1.,0.] for r in s.rows};check=DuplicateService(s);target=topics(s.rows[0]['title']);r=check.check({'topics':target})
    result=s.evaluate({'ideas':[target[0]['originalText']],'grade':'초등 5학년','duplicate_version':r['version']})
    self.assertEqual(result['score_passed_count'],1);self.assertEqual(result['passed_count'],0);self.assertTrue(result['evaluations'][0]['recommendation_hold']);self.assertIn('duplicate_report',captured[0]);self.assertEqual(result['evaluations'][0]['duplicate_status'],RISK);self.assertEqual(result['search_mode'],'lexical')
@@ -91,7 +92,7 @@ class EligibilityDetails(unittest.TestCase):
    class Fake:
     def call(self,path,payload):
      n=len(json.loads(payload['input'])['ideas'])
-     return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{k:{'score':90,'reason':'테스트 점수'} for k in ('originality','award_fit','feasibility','interest')},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(n)]})}]}]}
+     return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{k:{'score':90,'reason':'테스트 점수'} for k in ('originality','inquiry','feasibility','utility','interest')},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(n)]})}]}]}
    s=EvaluationService(Path(folder),Fake);checker=DuplicateService(s);title=s.rows[0]['title'];other=' '.join(title)
    target=topics(title)+[{'id':'b','originalText':other,'origin':'generated'}];r=checker.check({'topics':target})
    for identity in ['a','b']:r=checker.review({'version':r['version'],'topic_id':identity,'decision':'approved','reason':'차별성을 검토한 테스트'})
@@ -100,7 +101,7 @@ class EligibilityDetails(unittest.TestCase):
  def test_incomplete_check_high_score_stays_held(self):
   with tempfile.TemporaryDirectory() as folder:
    class Fake:
-    def call(self,path,payload):return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':0,**{k:{'score':90,'reason':'불확실한 테스트'} for k in ('originality','award_fit','feasibility','interest')},'source_ids':[],'uncertainties':[],'improvements':[]}]})}]}]}
+    def call(self,path,payload):return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':0,**{k:{'score':90,'reason':'불확실한 테스트'} for k in ('originality','inquiry','feasibility','utility','interest')},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]}]})}]}]}
    s=EvaluationService(Path(folder),Fake);checker=DuplicateService(s);title=s.rows[0]['title'];r=checker.check({'topics':topics(title),'method':'semantic'})
    result=s.evaluate({'ideas':[title],'grade':'초등 5학년','duplicate_version':r['version']});self.assertEqual(result['score_passed_count'],1);self.assertEqual(result['passed_count'],0)
  def test_search_model_version_change_invalidates_old_check(self):
@@ -115,7 +116,7 @@ class LongDetailsHTTP(unittest.TestCase):
   class Fake:
    def call(self,path,payload):
     data=json.loads(payload['input'])
-    return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{k:{'score':90,'reason':'테스트 응답'} for k in ('originality','award_fit','feasibility','interest')},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(len(data['ideas']))]})}]}]}
+    return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{k:{'score':90,'reason':'테스트 응답'} for k in ('originality','inquiry','feasibility','utility','interest')},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(len(data['ideas']))]})}]}]}
   with tempfile.TemporaryDirectory() as folder:
    svc=EvaluationService(Path(folder),Fake);server=ThreadingHTTPServer(('127.0.0.1',0),handler(svc));thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();url=f'http://127.0.0.1:{server.server_port}'
    def post(path,body):

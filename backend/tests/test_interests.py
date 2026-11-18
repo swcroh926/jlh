@@ -1,3 +1,4 @@
+from backend.rubric import CONDITIONS
 import copy,io,json,sqlite3,tempfile,threading,unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -61,7 +62,7 @@ class Interests(unittest.TestCase):
   s=InterestService(self.folder);one=s.confirm({'topics':TOPICS,**suggestion()});captured=[]
   class Evaluate:
    def call(self,path,payload):
-    captured.append(payload);return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{a:{'score':80,'reason':'확정 관심사 참고'} for a in ['originality','award_fit','feasibility','interest']},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(3)]})}]}]}
+    captured.append(payload);return {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps({'evaluations':[{'idea_index':i,**{a:{'score':80,'reason':'확정 관심사 참고'} for a in ['originality','inquiry','feasibility','utility','interest']},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(3)]})}]}]}
   svc=EvaluationService(self.folder,lambda:Evaluate());body={'ideas':[t['originalText'] for t in TOPICS],'grade':'초등 5학년','interest_version':one['version']}
   svc.evaluate(body);context=json.loads(captured[0]['input']);self.assertEqual(context['confirmed_interest_profile']['version'],one['version']);self.assertTrue(svc.evaluate(body)['cached'])
   data=suggestion();data['interests'][0]['source_topic_ids']=['a'];two=s.confirm({'topics':TOPICS,**data,'base_version':one['version']});svc.evaluate({**body,'interest_version':two['version']});self.assertEqual(len(captured),2)

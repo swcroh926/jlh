@@ -1,4 +1,5 @@
 """Only mocked model calls; real HTTP, SQLite, validation and UI."""
+from backend.rubric import CONDITIONS
 import os,tempfile,json,argparse
 from pathlib import Path
 from http.server import ThreadingHTTPServer
@@ -14,7 +15,12 @@ class Fake:
    if 'MALFORMED' in topics[0]['originalText']:result['interests'][0]['source_topic_ids']=['unknown-id']
   else:
    assert data.get('confirmed_interest_profile',{}).get('version')
-   result={'evaluations':[{'idea_index':i,**{k:{'score':80,'reason':'선생님 확정 관심사 참고'} for k in ('originality','award_fit','feasibility','interest')},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(len(data['ideas']))]}
+   result={'evaluations':[{'idea_index':i,**{k:{'score':80,'reason':'선생님 확정 관심사 참고'} for k in ('originality','inquiry','feasibility','utility','interest')},'execution_checks':{k:{'status':'가능','reason':'테스트 조건 확인'} for k in CONDITIONS},'source_ids':[],'uncertainties':[],'improvements':[]} for i in range(len(data['ideas']))]}
+   for e,title in zip(result['evaluations'],data['ideas']):
+    if title.startswith('ROUNDING'):
+     e['feasibility']['score']=79;e['interest']['score']=81
+    elif title.startswith('REVIEW'):e['execution_checks']['safety']={'status':'검토 필요','reason':'테스트: 안전 확인 필요'}
+    elif title.startswith('BLOCKED'):e['execution_checks']['equipment']={'status':'불가','reason':'테스트: 필수 장비 없음'}
   return {'status':'completed','usage':{'input_tokens':1,'output_tokens':1},'output':[{'content':[{'type':'output_text','text':json.dumps(result)}]}]}
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--port',type=int,default=8014);args=parser.parse_args()
