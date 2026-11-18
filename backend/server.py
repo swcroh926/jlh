@@ -1,5 +1,5 @@
 """Loopback-only development server; public deployment needs authentication first."""
-import argparse,json,mimetypes,threading,time,os
+import argparse,json,mimetypes,threading,time,os,webbrowser
 from pathlib import Path
 from collections import deque
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
@@ -58,12 +58,23 @@ def handler(service):
  return Handler
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8000);p.add_argument('--build-index',action='store_true');args=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8000);p.add_argument('--build-index',action='store_true');p.add_argument('--open-browser',action='store_true',help='서버 준비 후 로컬 브라우저 열기');args=p.parse_args()
  if args.build_index:
   build_index(OpenAI(),Path(os.environ.get('DATA_DIR',str(ROOT/'.local'))));return
- server=ThreadingHTTPServer(('127.0.0.1',args.port),handler(EvaluationService()))
- print(f'Development server: port {args.port}; API configured: {bool(key())}',flush=True)
+ try:server=ThreadingHTTPServer(('127.0.0.1',args.port),handler(EvaluationService()))
+ except OSError:p.exit(1,'서버 포트를 열지 못했습니다. 이전 실행 창을 닫거나 다른 포트를 지정해주세요.\n')
+ url=f'http://127.0.0.1:{server.server_port}'
+ print(f'Local preview: {url}',flush=True)
+ print(f'API configured: {bool(key())}. Stop with Ctrl+C.',flush=True)
+ timer=None
+ if args.open_browser:
+  def open_preview():
+   try:webbrowser.open(url,new=2)
+   except webbrowser.Error:print('브라우저에서 위 주소를 직접 열어주세요.',flush=True)
+  timer=threading.Timer(0.3,open_preview);timer.daemon=True;timer.start()
  try:server.serve_forever()
  except KeyboardInterrupt:pass
- finally:server.server_close()
+ finally:
+  if timer:timer.cancel()
+  server.server_close()
 if __name__=='__main__':main()
