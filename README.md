@@ -57,3 +57,5 @@ Render용 render.yaml과 Gunicorn 기반 시험 서버, 접근 코드/서명 쿠
 ## 선생님이 개발본을 직접 테스트하기
 
 Windows에서는 개발 브랜치 ZIP을 풀고 **START_LOCAL.bat**를 두 번 클릭하면 브라우저가 열립니다. 수집 도구용 Python 3.10 이상을 재사용하며 Node.js/Git 설치는 필요하지 않습니다. 이 실행 파일은 유료 API 키를 전달하지 않아 직접 관심사 분류·파일 입력·제목 검색·기록을 비용 없이 확인할 수 있습니다. 최신 개발본 다운로드·업데이트와 기록 보존 방법은 [테스트 안내](docs/TESTING_FOR_TEACHERS.md)에 정리했습니다.
+
+실제 OpenAI 관심사 분석을 PC에서 시험하려면 **START_AI_LOCAL.bat**를 사용합니다. 비용 동의 후 터미널에서 API 키를 숨김 입력하며, 키를 파일에 저장하지 않습니다. 무료 화면 테스트인 START_LOCAL.bat와 구분합니다. [실제 AI 테스트 절차](docs/TESTING_FOR_TEACHERS.md#7-실제-관심사-ai-분석을-테스트하려면-openai)를 참고하세요. Gemini API 연결은 아직 없습니다.
